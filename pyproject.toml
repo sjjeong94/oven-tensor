@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oven-tensor"
+version = "0.1.0"
+authors = [
+    {name = "Sinjin Jeong", email = "sjjeong94@gmail.com"},
+]
+description = "PyTorch-style tensor operations with CUDA kernels compiled by oven-compiler"
+readme = "README.md"
+requires-python = ">=3.7"
+license = "MIT"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["pytorch", "cuda", "gpu", "tensor", "machine-learning", "deep-learning", "oven"]
+dependencies = [
+    "numpy>=1.19.0",
+    "pycuda>=2021.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/oven-tensor"
+"Bug Reports" = "https://github.com/yourusername/oven-tensor/issues"
+"Source" = "https://github.com/yourusername/oven-tensor"
+
+[project.scripts]
+oven-tensor-cache = "oven_tensor.cli:cache_command"
+
+[tool.setuptools]
+packages = ["oven_tensor", "oven_tensor.kernels"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+oven_tensor = ["kernels/*.py"]
+
+[tool.black]
+line-length = 88
+target-version = ['py37']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers"
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
+
+[tool.coverage.run]
+source = ["oven_tensor"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]

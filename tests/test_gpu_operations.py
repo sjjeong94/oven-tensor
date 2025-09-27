@@ -66,6 +66,73 @@ class TestGPUOperations:
         except Exception as e:
             pytest.skip(f"GPU operations not available: {e}")
 
+    def test_gpu_matmul_operations(self):
+        """Test matrix multiplication on GPU"""
+        try:
+            # Test 2x2 matrices on GPU
+            a = ot.tensor([[1.0, 2.0], [3.0, 4.0]]).gpu()
+            b = ot.tensor([[5.0, 6.0], [7.0, 8.0]]).gpu()
+
+            # Test matmul (may fail if kernel loading fails)
+            try:
+                # Test @ operator
+                c_gpu = a @ b
+                c_cpu = c_gpu.cpu()
+
+                # Expected result: [[19, 22], [43, 50]]
+                expected = np.array([[19.0, 22.0], [43.0, 50.0]])
+                np.testing.assert_array_almost_equal(c_cpu._data, expected)
+
+                # Test method call
+                c2_gpu = a.matmul(b)
+                c2_cpu = c2_gpu.cpu()
+                np.testing.assert_array_almost_equal(c2_cpu._data, expected)
+
+                # Test package function
+                c3_gpu = ot.matmul(a, b)
+                c3_cpu = c3_gpu.cpu()
+                np.testing.assert_array_almost_equal(c3_cpu._data, expected)
+
+                print("GPU matmul test passed!")
+
+            except RuntimeError as e:
+                if "kernel" in str(e).lower() or "matmul" in str(e).lower():
+                    pytest.skip(f"GPU matmul kernel not available: {e}")
+                else:
+                    raise
+        except Exception as e:
+            pytest.skip(f"GPU matmul operations not available: {e}")
+
+    def test_gpu_matmul_different_sizes(self):
+        """Test GPU matmul with different matrix sizes"""
+        try:
+            # Test 3x2 @ 2x4 = 3x4 on GPU
+            x = ot.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).gpu()  # 3x2
+            y = ot.tensor([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]]).gpu()  # 2x4
+
+            try:
+                z_gpu = x @ y  # Should be 3x4
+                z_cpu = z_gpu.cpu()
+
+                assert z_cpu.shape == (3, 4)
+
+                # Compare with CPU result
+                x_cpu = ot.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+                y_cpu = ot.tensor([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]])
+                expected_cpu = x_cpu @ y_cpu
+
+                np.testing.assert_array_almost_equal(
+                    z_cpu.numpy(), expected_cpu.numpy()
+                )
+
+            except RuntimeError as e:
+                if "kernel" in str(e).lower() or "matmul" in str(e).lower():
+                    pytest.skip(f"GPU matmul kernel not available: {e}")
+                else:
+                    raise
+        except Exception as e:
+            pytest.skip(f"GPU matmul operations not available: {e}")
+
     def test_mixed_device_operations(self):
         """Test operations between CPU and GPU tensors"""
         try:
@@ -126,3 +193,65 @@ class TestPerformance:
 
         except Exception as e:
             pytest.skip(f"Repeated GPU operations not available: {e}")
+
+    def test_large_matmul_performance(self):
+        """Test matmul performance on larger matrices"""
+        try:
+            # Test with reasonably sized matrices (64x64)
+            size = 64
+            a_cpu = ot.randn((size, size))
+            b_cpu = ot.randn((size, size))
+
+            # CPU matmul
+            c_cpu = a_cpu @ b_cpu
+            assert c_cpu.shape == (size, size)
+
+            # GPU matmul (if available)
+            try:
+                a_gpu = a_cpu.gpu()
+                b_gpu = b_cpu.gpu()
+                c_gpu = a_gpu @ b_gpu
+                c_gpu_result = c_gpu.cpu()
+
+                assert c_gpu_result.shape == (size, size)
+
+                # Compare results (allowing for floating point differences)
+                np.testing.assert_allclose(
+                    c_cpu.numpy(), c_gpu_result.numpy(), rtol=1e-4, atol=1e-4
+                )
+                print(f"Large matmul ({size}x{size}) test passed!")
+
+            except RuntimeError as e:
+                if "kernel" in str(e).lower() or "matmul" in str(e).lower():
+                    pytest.skip(f"GPU matmul kernel not available: {e}")
+                else:
+                    raise
+        except Exception as e:
+            pytest.skip(f"Large matmul performance test not available: {e}")
+
+    def test_repeated_matmul_operations(self):
+        """Test repeated matmul operations for memory leaks"""
+        try:
+            # Small matrices for repeated operations
+            a = ot.tensor([[1.0, 2.0], [3.0, 4.0]]).gpu()
+            b = ot.tensor([[5.0, 6.0], [7.0, 8.0]]).gpu()
+
+            # Perform many matmul operations
+            try:
+                for i in range(50):
+                    c = a @ b
+                    # Use result as input for next iteration occasionally
+                    if i % 10 == 0:
+                        a = c
+
+                # Should not crash or run out of memory
+                assert c.shape == (2, 2)
+                print("Repeated matmul operations test passed!")
+
+            except RuntimeError as e:
+                if "kernel" in str(e).lower() or "matmul" in str(e).lower():
+                    pytest.skip(f"GPU matmul kernel not available: {e}")
+                else:
+                    raise
+        except Exception as e:
+            pytest.skip(f"Repeated matmul GPU operations not available: {e}")

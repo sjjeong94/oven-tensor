@@ -196,6 +196,8 @@ class KernelManager:
             "vsub",
             "vmul",
             "vdiv",
+            # matrix operations
+            "matmul",
         ]
 
         for func_name in common_functions:
@@ -421,6 +423,67 @@ class Tensor:
 
             return result
 
+    def _execute_matmul_op(self, other: "Tensor") -> "Tensor":
+        """Execute matrix multiplication operation"""
+        # Check device match
+        if self.device.type != other.device.type:
+            raise RuntimeError(
+                "Tensors must be on the same device for matmul operations"
+            )
+
+        # Check 2D matrices
+        if len(self.shape) != 2 or len(other.shape) != 2:
+            raise RuntimeError("matmul requires 2D tensors (matrices)")
+
+        m, k1 = self.shape
+        k2, n = other.shape
+
+        if k1 != k2:
+            raise RuntimeError(
+                f"Matrix dimensions incompatible: {self.shape} @ {other.shape}"
+            )
+
+        if self.device.type == "cpu":
+            # NumPy matrix multiplication on CPU
+            result_data = np.dot(self._data, other._data)
+            return Tensor(result_data, self.device, self.dtype)
+
+        else:  # GPU
+            kernel_manager = get_kernel_manager()
+            func = kernel_manager.get_function("matmul")
+            if func is None:
+                raise RuntimeError(
+                    f"GPU kernel 'matmul' not found. Available functions: {list(kernel_manager.functions.keys())}"
+                )
+
+            # Create result tensor
+            result_shape = (m, n)
+            result = Tensor(
+                np.zeros(result_shape, dtype=self.dtype), self.device, self.dtype
+            )
+
+            # Configure 2D grid for matrix multiplication
+            block_size = 16  # 16x16 thread blocks
+            grid_x = (n + block_size - 1) // block_size
+            grid_y = (m + block_size - 1) // block_size
+
+            grid = (grid_x, grid_y, 1)
+            block = (block_size, block_size, 1)
+
+            # Execute kernel with m, n, k parameters
+            func(
+                self._gpu_ptr,
+                other._gpu_ptr,
+                result._gpu_ptr,
+                np.int32(m),
+                np.int32(n),
+                np.int32(k1),
+                block=block,
+                grid=grid,
+            )
+
+            return result
+
     # Unary operation methods
     def sigmoid(self) -> "Tensor":
         return self._execute_unary_op("sigmoid")
@@ -480,6 +543,11 @@ class Tensor:
     def mod(self, other: "Tensor") -> "Tensor":
         return self._execute_binary_op(other, "mod")
 
+    # Matrix operation methods
+    def matmul(self, other: "Tensor") -> "Tensor":
+        """Matrix multiplication: self @ other"""
+        return self._execute_matmul_op(other)
+
     # Python operator overloading
     def __add__(self, other: "Tensor") -> "Tensor":
         return self.add(other)
@@ -498,6 +566,9 @@ class Tensor:
 
     def __mod__(self, other: "Tensor") -> "Tensor":
         return self.mod(other)
+
+    def __matmul__(self, other: "Tensor") -> "Tensor":
+        return self.matmul(other)
 
     def __str__(self) -> str:
         if self.device.type == "gpu":
@@ -538,6 +609,11 @@ def randn(shape: Tuple, device=device("cpu"), dtype=np.float32) -> Tensor:
     """Create random tensor with normal distribution"""
     data = np.random.randn(*shape).astype(dtype)
     return Tensor(data, device, dtype)
+
+
+def matmul(a: Tensor, b: Tensor) -> Tensor:
+    """Matrix multiplication: a @ b"""
+    return a.matmul(b)
 
 
 # Package management functions

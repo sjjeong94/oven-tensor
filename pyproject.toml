@@ -30,6 +30,7 @@ keywords = ["pytorch", "cuda", "gpu", "tensor", "machine-learning", "deep-learni
 dependencies = [
     "numpy>=1.19.0",
     "pycuda>=2021.1",
+    "oven-compiler>=0.1.0",
 ]
 
 [project.optional-dependencies]

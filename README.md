@@ -40,6 +40,12 @@ x_gpu = x.gpu()
 y_gpu = y.gpu()
 z_gpu = x_gpu + y_gpu
 print(z_gpu.cpu())  # Tensor([3. 5. 7. 9.], device=cpu)
+
+# Matrix multiplication
+A = ot.tensor([[1.0, 2.0], [3.0, 4.0]])
+B = ot.tensor([[5.0, 6.0], [7.0, 8.0]])
+C = A @ B
+print(C)  # Tensor([[19. 22.], [43. 50.]], device=cpu)
 ```
 
 ## Operations
@@ -61,6 +67,17 @@ x.sin(), x.cos(), x.log(), x.tanh()
 ### Binary Operations
 ```python
 x + y, x - y, x * y, x / y, x ** y, x % y
+```
+
+### Matrix Operations
+```python
+# Matrix multiplication
+A = ot.tensor([[1, 2], [3, 4]])
+B = ot.tensor([[5, 6], [7, 8]])
+
+C = A.matmul(B)           # Method call
+C = A @ B                 # @ operator
+C = ot.matmul(A, B)       # Function call
 ```
 
 ### Device Management

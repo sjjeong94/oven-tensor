@@ -126,3 +126,33 @@ class TestCPUOperations:
         z = x_small.exp()
         expected = np.exp([0.0, 1.0, 2.0])
         np.testing.assert_array_almost_equal(z._data, expected)
+
+    def test_matmul_operations_cpu(self):
+        """Test matrix multiplication on CPU"""
+        # Test 2x2 matrices
+        a = ot.tensor([[1.0, 2.0], [3.0, 4.0]])
+        b = ot.tensor([[5.0, 6.0], [7.0, 8.0]])
+
+        # Method call
+        c = a.matmul(b)
+        expected = np.array([[19.0, 22.0], [43.0, 50.0]])
+        np.testing.assert_array_almost_equal(c._data, expected)
+
+        # @ operator
+        c2 = a @ b
+        np.testing.assert_array_almost_equal(c2._data, expected)
+
+        # Package function
+        c3 = ot.matmul(a, b)
+        np.testing.assert_array_almost_equal(c3._data, expected)
+
+        # Test different sizes (3x2 @ 2x4)
+        x = ot.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])  # 3x2
+        y = ot.tensor([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]])  # 2x4
+
+        z = x @ y  # Should be 3x4
+        assert z.shape == (3, 4)
+
+        # Compare with NumPy
+        expected = np.dot(x.numpy(), y.numpy())
+        np.testing.assert_array_almost_equal(z.numpy(), expected)
